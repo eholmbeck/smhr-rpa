@@ -1318,6 +1318,12 @@ class MeasurementTableView(BaseTableView):
             self.set_flag("is_acceptable", False)
         elif key == QtCore.Qt.Key_Right:
             self.set_flag("is_acceptable", True)
+        elif key == QtCore.Qt.Key_F:
+            spectral_model = self.get_selected_models(getrows=False)[0]
+            self.set_flag("user_flag", np.logical_not(spectral_model.user_flag))
+        elif key == QtCore.Qt.Key_U:
+            spectral_model = self.get_selected_models(getrows=False)[0]
+            self.set_flag("is_upper_limit", np.logical_not(spectral_model.is_upper_limit))
         else:
             super(MeasurementTableView, self).keyPressEvent(eventQKeyEvent)
     

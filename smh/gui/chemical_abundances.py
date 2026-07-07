@@ -30,7 +30,33 @@ from spectral_models_table import SpectralModelsTableViewBase, SpectralModelsFil
 from linelist_manager import TransitionsDialog
 
 logger = logging.getLogger(__name__)
-logger.addHandler(smh.handler)
+
+
+# Holmbeck added this
+# WARNING - this removes the messages from MOOG
+# ===================================================
+# Get the SMHR root logger (if exists) or root
+smh_logger = logging.getLogger("smh")
+root_logger = logging.getLogger()
+
+# 1. Make sure your module and its parents are allowed to emit DEBUG messages
+logger.setLevel(logging.INFO)
+smh_logger.setLevel(logging.INFO)
+root_logger.setLevel(logging.INFO)
+
+# 2. Prevent duplicate output by NOT adding a new handler if one already exists
+if not logger.handlers:
+    # Use the same formatting style as other SMHR logs
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)-8s] %(message)s",
+        "%Y-%m-%d %H:%M:%S"
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.propagate = False  # ensure we don't send messages up to root again
+# ===================================================
+
 
 if sys.platform == "darwin":
         
@@ -1622,11 +1648,11 @@ class ChemicalAbundancesTab(QtGui.QWidget):
     
     # E. Holmbeck added
     def clicked_fit_all_synth(self, skip_message=False):
-        if not skip_message:
-            num_models = 0
-            for sm in self.parent.session.metadata.get("spectral_models", []):
-                if isinstance(sm, SpectralSynthesisModel) and sm.is_acceptable==self.acceptables_only: num_models += 1
-            
+        num_models = 0
+        for sm in self.parent.session.metadata.get("spectral_models", []):
+            if isinstance(sm, SpectralSynthesisModel) and sm.is_acceptable==self.acceptables_only: num_models += 1
+
+        if not skip_message:            
             time_estimate = num_models * 10.0
             if time_estimate >= 60:
                 units = "minutes"
@@ -1645,6 +1671,7 @@ class ChemicalAbundancesTab(QtGui.QWidget):
         logger.info("Re-fitting all synth lines.")
         # TODO: HACKY!
         row_count = -1
+        completed = 0
         for sm in self.parent.session.metadata.get("spectral_models", []):
             row_count+=1
             if not isinstance(sm, SpectralSynthesisModel): continue
@@ -1668,6 +1695,8 @@ class ChemicalAbundancesTab(QtGui.QWidget):
             self.update_fitting_options()
             self.refresh_plots(row_count)
             self.fit_none(sm)
+            completed += 1
+            logger.info(f'Completed {completed:} of {num_models:}.')
             #self.figure.draw()
         
         end_time = time.time()
