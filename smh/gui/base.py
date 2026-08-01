@@ -1022,8 +1022,17 @@ class SMHScatterplot(mpl.MPLWidget):
 
         # Reset axes before adding lines.
         xlim,ylim = style_utils.relim_axes(self.ax)
-        xlim = np.array(xlim)
         self.reset_zoom_limits()
+
+        # relim_axes returns (None, None) when there are no finite points to
+        # plot (e.g. a session loaded before any abundances are measured).
+        # There's nothing to fit or draw lines against, so bail out early
+        # rather than crash on `m*xlim` below.
+        if xlim is None:
+            if redraw:
+                self.draw()
+            return
+        xlim = np.array(xlim)
         
         for ifilt,(filt, point, error, linefit, linemean, fillmean) in enumerate(self._graphics):
             valid = valids[ifilt,:]

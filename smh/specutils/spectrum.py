@@ -377,6 +377,10 @@ class Spectrum1D(object):
         is_apo_product = (image[0].header.get("OBSERVAT", None) == "APO")
         is_dupont_product = (md5_hash == "2ab648afed96dcff5ccd10e5b45730c1")
         is_iraf_1band_product = (md5_hash == "148aa0c459c8085f7461a519b1a060e5") # McD old reductions
+        # FIES/NOT IRAF echelle reductions: BANDID1=spectrum, BANDID2=raw,
+        # BANDID3=sigma (same 3-band layout as is_iraf_3band_product, but the
+        # BANDID text differs so its hash doesn't match). Detect via header.
+        is_fies_product = (str(metadata.get("INSTRUME", "")).strip() == "FIES")
         if is_carpy_mike_product or is_carpy_mage_product or is_carpy_mike_product_old or is_dupont_product:
             # CarPy gives a 'noise' spectrum, which we must convert to an
             # inverse variance array
@@ -390,11 +394,11 @@ class Spectrum1D(object):
             flux = image[0].data[flux_ext]
             ivar = image[0].data[noise_ext]**(-2)
 
-        elif is_iraf_3band_product:
+        elif is_iraf_3band_product or is_fies_product:
             flux_ext = flux_ext or 0
             noise_ext = ivar_ext or 2
             if len(image[0].data) == 2: noise_ext =1
-            
+
             logger.info(
                 "Recognized IRAF 3band product. Using zero-indexed flux/noise "
                 "extensions (bands) {}/{}".format(flux_ext, noise_ext))
