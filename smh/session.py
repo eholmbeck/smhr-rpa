@@ -788,6 +788,10 @@ class Session(BaseSession):
             The radial velocity correction (in km/s) to apply.
         """
 
+        # rv may arrive as a string from the GUI text box; store it numerically
+        # so downstream consumers (e.g. rv_measured) don't end up as strings.
+        rv = float(rv)
+
         self.metadata["rv"]["rv_applied"] = -float(rv)
         
         # -----------------------------------------------------------------
