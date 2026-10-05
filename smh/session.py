@@ -788,6 +788,10 @@ class Session(BaseSession):
             The radial velocity correction (in km/s) to apply.
         """
 
+        # rv may arrive as a string from the GUI text box; store it numerically
+        # so downstream consumers (e.g. rv_measured) don't end up as strings.
+        rv = float(rv)
+
         self.metadata["rv"]["rv_applied"] = -float(rv)
         
         # -----------------------------------------------------------------
@@ -1799,7 +1803,7 @@ class Session(BaseSession):
         tab["stderr"].format = "5.2f"
         tab["[X/H]"].format = "5.2f"
         tab["[X/Fe]"].format = "5.2f"
-        tab.write(filepath, format="ascii.fixed_width_two_line")
+        tab.write(filepath, format="ascii.fixed_width_two_line", overwrite=True)
         return True #raise NotImplementedError
 
     def export_spectral_model_measurements(self, filepath):

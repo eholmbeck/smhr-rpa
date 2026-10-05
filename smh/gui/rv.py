@@ -755,8 +755,10 @@ class RVTab(QtGui.QWidget):
 
         self.ax_ccf.lines[0].set_data([v, ccf])
 
-        rv_measured = self.parent.session.metadata["rv"]["rv_measured"]
-        
+        # rv_measured may have been stored as a string by older sessions; coerce
+        # it so arithmetic below doesn't raise a TypeError on load.
+        rv_measured = float(self.parent.session.metadata["rv"]["rv_measured"])
+
         self.ax_ccf.set_xlim(rv_measured - 1000, rv_measured + 1000)
         self.ax_ccf.set_ylim(0, 1.2)
 
