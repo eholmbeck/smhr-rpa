@@ -112,6 +112,7 @@ class Spectrum1D(object):
 
         # Try multi-spec first since this is currently the most common use case.
         methods = (
+	    cls.read_ghost, # Vini (via ChatGPT)
             cls.read_fits_multispec,
             cls.read_fits_spectrum1d,
             cls.read_ascii_spectrum1d,
@@ -502,6 +503,73 @@ class Spectrum1D(object):
             ivar = newivar
 
         return (dispersion, flux, ivar, metadata)
+
+    @classmethod
+    def read_ghost(cls, path, **kwargs):
+        """
+        Code from Vini Placco (2025-06)
+        Read GHOST (Gemini High-resolution Optical SpecTrograph) spectra from a calibrated FITS file.
+
+        This method expects the following HDUs for each arm (blue and red):
+        - SCI: Flux data
+        - VAR: Variance data
+        - AWAV: Wavelength solution (dispersion)
+
+        """
+        with fits.open(path) as hdul:
+            metadata = OrderedDict(hdul[0].header)
+            metadata["smh_read_path"] = path
+
+            # Container for each order
+            dispersions, fluxes, ivars = [], [], []
+#IFU1
+            sci  = hdul[1].data.T  # SCI
+            var  = hdul[2].data.T  # VAR
+            awav = hdul[4].data.T  # AWAV
+#IFU2
+#            sci  = hdul[5].data.T  # SCI
+#            var  = hdul[6].data.T  # VAR
+#            awav = hdul[8].data.T  # AWAV
+
+            # Loop over orders (columns)
+            for order in range(sci.shape[1]):
+                flux = sci[:, order]
+                ivar = 1.0 / var[:, order]
+                dispersion = awav[:, order]*10. # nm to A
+
+                # Clean bad pixels
+                bad = ~np.isfinite(flux) | ~np.isfinite(ivar) | ~np.isfinite(dispersion) | (ivar <= 0)
+                flux[bad] = np.nan
+                ivar[bad] = 0.0
+
+                # Remove unphysical low values
+                too_low = flux < -1e2
+                flux[too_low] = np.nan
+                ivar[too_low] = 0.0
+            
+                # Remove unphysical high values (> mean + 3*std)
+                finite_flux = flux[np.isfinite(flux)]
+                if finite_flux.size > 0:
+                    flux_mean = np.nanmean(finite_flux)
+                    flux_std = np.nanstd(finite_flux)
+                    high_thresh = flux_mean + 5 * flux_std
+            
+                    too_high = flux > high_thresh
+                    flux[too_high] = np.nan
+                    ivar[too_high] = 0.0
+                
+		# Trim 10% of the edges of each order
+                cut = int(0.10 * len(flux))
+                flux = flux[cut:-cut]
+                ivar = ivar[cut:-cut]
+                dispersion = dispersion[cut:-cut]
+
+
+                dispersions.append(dispersion)
+                fluxes.append(flux)
+                ivars.append(ivar)
+
+        return (dispersions, fluxes, ivars, metadata)
 
     # E. Holmbeck added NEID capabilities
     @classmethod
